@@ -9,7 +9,7 @@ def carregar_dados():
     arquivos = {
         "2019": "dados/seriehistorica2019.xlsx",
         "2020 - 1º Semestre": "dados/primeirosemestre2020.xlsx",
-        "2020 - 2º Semestre": "dados/segundosemestre2020.xls",
+        "2020 - 2º Semestre": "dados/segundosemestre2020.xlsx",
         "2021": "dados/ano2021.xlsx"
     }
 
