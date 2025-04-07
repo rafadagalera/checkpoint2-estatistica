@@ -29,5 +29,9 @@ st.write("Além do impacto ambiental e humano, a tragédia escancarou falhas na 
 st.write("Mesmo anos após o desastre, os impactos ainda são sentidos. Muitas famílias seguem esperando por indenizações e reassentamentos definitivos. A tragédia de Mariana tornou-se um símbolo da luta por justiça ambiental no país e marcou profundamente a relação entre mineração e meio ambiente no Brasil.")
 st.image("assets\imagem2.png")
 st.divider()
+st.header("Tópicos e perguntas discutidas nesse estudo")
+st.subheader("❓ 1. Qual foi o impacto da lama tóxica na turbidez da água?")
+st.subheader("❓ 2. Quais foram os principais metais pesados encontrados nos rios após o desastre?")
+st.subheader("❓ 3. Como a qualidade da água mudou ao longo do tempo?")
 
 
