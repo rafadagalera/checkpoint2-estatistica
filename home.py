@@ -31,7 +31,7 @@ st.image("assets\imagem2.png")
 st.divider()
 st.header("Tópicos e perguntas discutidas nesse estudo")
 st.subheader("❓ 1. Qual foi o impacto da lama tóxica na turbidez da água?")
-st.subheader("❓ 2. Quais foram os principais metais pesados encontrados nos rios após o desastre?")
+st.subheader("❓ 2. O número de dejetos sólidos está diminuindo ao longo do tempo?")
 st.subheader("❓ 3. Como a qualidade da água mudou ao longo do tempo?")
 
 
