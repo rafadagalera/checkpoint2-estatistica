@@ -62,7 +62,7 @@ else:
 
 st.subheader("🏞️ Estações com maiores valores para a variável selecionada")
 
-coluna_estacao = st.selectbox("Escolha a coluna que representa a estação/local:", df.columns)
+coluna_estacao = df["Estação"]
 
 colunas_numericas = df.select_dtypes(include=["float64", "int64"]).columns.tolist()
 

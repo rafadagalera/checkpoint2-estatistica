@@ -30,3 +30,4 @@ st.write("Mesmo anos após o desastre, os impactos ainda são sentidos. Muitas f
 st.image("assets\imagem2.png")
 st.divider()
 
+
