@@ -1,88 +1,126 @@
 import streamlit as st
 import pandas as pd
-import scipy.stats as stats
+import numpy as np
 import plotly.graph_objects as go
+from sklearn.linear_model import LinearRegression
+from scipy.stats import t
 
-st.set_page_config(page_title="Análise com Intervalo de Confiança", layout="wide")
-st.title("📊 Análise com Intervalo de Confiança entre Semestres")
-st.markdown("Comparação de uma variável numérica entre o 1º e o 2º semestre de 2020 usando intervalo de confiança de 95%.")
+st.set_page_config(page_title="Previsão da Turbidez da Água", layout="wide")
+st.title("💧 Estudo da Turbidez da Água ao Longo do Tempo")
 
-# Carrega os dados
-df1 = pd.read_excel("dados/primeirosemestre2020.xlsx")
-df2 = pd.read_excel("dados/segundosemestre2020.xls", engine="xlrd")
+st.markdown("""
+### 📘 O que é Turbidez?
 
-# Padroniza os nomes das colunas
-df1.columns = df1.columns.str.strip().str.lower()
-df2.columns = df2.columns.str.strip().str.lower()
+A **turbidez** é uma medida da quantidade de partículas sólidas em suspensão na água que afetam sua transparência.  
+Ela é normalmente causada por argilas, siltes, matéria orgânica, algas ou outros materiais.
 
-# Mostra os tipos de dados
-st.subheader("🔍 Colunas disponíveis e tipos de dados:")
-col1, col2 = st.columns(2)
-with col1:
-    st.write("📁 1º Semestre:")
-    st.dataframe(df1.dtypes)
-with col2:
-    st.write("📁 2º Semestre:")
-    st.dataframe(df2.dtypes)
+- A unidade de medida usada é **NTU (Unidade Nefelométrica de Turbidez)**.
+- Segundo a legislação brasileira e padrões internacionais, **valores abaixo de 5 NTU** são considerados **excelentes** para água potável.
 
-# Interseção de colunas
-colunas_comuns = df1.columns.intersection(df2.columns)
+---
 
-# Tenta detectar colunas numéricas comuns
-colunas_numericas_comuns = [col for col in colunas_comuns if pd.api.types.is_numeric_dtype(df1[col]) and pd.api.types.is_numeric_dtype(df2[col])]
+### 🔍 Objetivo do Estudo
 
-st.subheader("📌 Selecione a variável numérica para análise")
+Este painel analisa dados históricos de turbidez da água coletados entre 2019 e 2021.  
+Aplicamos uma **regressão linear** para prever quando os níveis de turbidez podem voltar a padrões **excelentes**.
+""")
 
-if colunas_numericas_comuns:
-    col_od = st.selectbox("Variáveis numéricas comuns:", colunas_numericas_comuns)
+# === Carregamento dos dados ===
+@st.cache_data
+def carregar_dados():
+    arquivos = {
+        "2019": "dados/seriehistorica2019.xlsx",
+        "1S2020": "dados/primeirosemestre2020.xlsx",
+        "2S2020": "dados/segundosemestre2020.xlsx",
+        "2021": "dados/ano2021.xlsx"
+    }
+    lista_dfs = []
+
+    for nome, caminho in arquivos.items():
+        df = pd.read_excel(caminho)
+        df.columns = df.columns.str.strip().str.lower()
+
+        if 'data de amostragem' in df.columns and 'turbidez' in df.columns:
+            dados = df[['data de amostragem', 'turbidez']].copy()
+            dados['data de amostragem'] = pd.to_datetime(dados['data de amostragem'], errors='coerce')
+            dados = dados.dropna(subset=['data de amostragem', 'turbidez'])
+            dados['periodo'] = nome
+            lista_dfs.append(dados)
+
+    return pd.concat(lista_dfs, ignore_index=True)
+
+df = carregar_dados()
+
+# === Pré-processamento ===
+df = df.sort_values(by='data de amostragem')
+df['ano_decimal'] = df['data de amostragem'].dt.year + (df['data de amostragem'].dt.dayofyear / 365)
+
+# === Regressão Linear ===
+X = df[['ano_decimal']].values
+y = df['turbidez'].values
+modelo = LinearRegression()
+modelo.fit(X, y)
+
+# Previsão para anos futuros
+anos_futuros = np.arange(2019, 2031, 0.1).reshape(-1, 1)
+previsoes = modelo.predict(anos_futuros)
+
+# Criar datas reais para eixo X
+datas_futuras = pd.to_datetime([f"{int(a)}-01-01" for a in anos_futuros.flatten()])
+
+# === Gráfico 1: turbidez + regressão ===
+st.header("📊 Evolução da Turbidez da Água")
+fig = go.Figure()
+
+# Pontos reais
+fig.add_trace(go.Scatter(x=df['data de amostragem'], y=df['turbidez'],
+                         mode='markers', name='Amostras', marker=dict(color='blue', size=5)))
+
+# Linha de regressão
+fig.add_trace(go.Scatter(x=datas_futuras, y=previsoes,
+                         mode='lines', name='Tendência (Regressão Linear)', line=dict(color='red')))
+
+# Linha padrão excelente
+fig.add_hline(y=5, line_dash="dash", line_color="green",
+              annotation_text="Padrão Excelente (5 NTU)", annotation_position="bottom right")
+
+fig.update_layout(title="Turbidez da Água ao Longo do Tempo",
+                  xaxis_title="Data", yaxis_title="Turbidez (NTU)",
+                  height=500)
+
+st.plotly_chart(fig, use_container_width=True)
+
+# === Previsão de retorno à qualidade excelente ===
+ano_excelente = None
+for ano, pred in zip(anos_futuros.flatten(), previsoes):
+    if pred <= 5:
+        ano_excelente = ano
+        break
+
+st.subheader("📈 Previsão com Base na Tendência Atual")
+
+if ano_excelente:
+    st.success(f"""
+    ✅ A análise de regressão linear prevê que a turbidez pode atingir o padrão excelente (**≤ 5 NTU**) 
+    por volta de **{int(ano_excelente)}**.
+    """)
 else:
-    st.warning("⚠️ Nenhuma coluna numérica comum foi detectada automaticamente.")
-    col_od = st.selectbox("Selecione manualmente uma coluna presente nos dois arquivos:", df1.columns)
+    st.warning("⚠️ A projeção atual indica que os níveis de turbidez podem não atingir o padrão excelente até 2030.")
 
-# Verifica se a coluna existe nos dois arquivos
-if col_od in df1.columns and col_od in df2.columns:
-    # Converte para numérico se necessário
-    od_1 = pd.to_numeric(df1[col_od], errors="coerce").dropna()
-    od_2 = pd.to_numeric(df2[col_od], errors="coerce").dropna()
+# === Explicação estatística ===
+st.markdown("""
+---
 
-    def media_e_ic(dados, confianca=0.95):
-        n = len(dados)
-        media = dados.mean()
-        erro = stats.sem(dados)
-        margem = erro * stats.t.ppf((1 + confianca) / 2, df=n - 1)
-        return media, media - margem, media + margem
+### 📐 Sobre o Método Estatístico
 
-    media1, ic1_inf, ic1_sup = media_e_ic(od_1)
-    media2, ic2_inf, ic2_sup = media_e_ic(od_2)
+Utilizamos **regressão linear simples**, uma técnica estatística que busca ajustar uma linha reta aos dados históricos, 
+assumindo uma relação linear entre o tempo e os valores de turbidez.
 
-    # Tabela de resultado
-    st.subheader("📋 Estatísticas e Intervalos de Confiança (95%)")
-    st.write(pd.DataFrame({
-        "Semestre": ["1º Semestre 2020", "2º Semestre 2020"],
-        "Média": [media1, media2],
-        "IC Inferior": [ic1_inf, ic2_inf],
-        "IC Superior": [ic1_sup, ic2_sup]
-    }))
+Com base nesse modelo, geramos uma projeção para os anos seguintes. A ideia é observar **a tendência** e estimar quando a turbidez pode cair abaixo do limite ideal.
 
-    # Gráfico com IC
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=["1º Sem 2020", "2º Sem 2020"],
-        y=[media1, media2],
-        error_y=dict(type='data', array=[media1 - ic1_inf, media2 - ic2_inf]),
-        name="Intervalo de Confiança"
-    ))
-    fig.update_layout(title=f"Média de '{col_od}' com Intervalo de Confiança (95%)",
-                      yaxis_title=col_od,
-                      xaxis_title="Semestre",
-                      height=500)
-    st.plotly_chart(fig)
+#### E o Intervalo de Confiança?
 
-    # Conclusão com base na sobreposição
-    st.subheader("📌 Conclusão")
-    if ic1_sup < ic2_inf or ic2_sup < ic1_inf:
-        st.success("✅ Existe uma diferença estatisticamente significativa entre os semestres.")
-    else:
-        st.info("ℹ️ Não foi encontrada uma diferença estatisticamente significativa entre os semestres.")
-else:
-    st.error(f"A coluna selecionada '{col_od}' não está presente nos dois arquivos.")
+Embora esse gráfico mostre apenas a linha média prevista, abaixo apresentamos também o **intervalo de confiança de 95%**,  
+que representa a faixa dentro da qual esperamos que a verdadeira turbidez esteja com 95% de certeza, dado o modelo.
+""")
+
