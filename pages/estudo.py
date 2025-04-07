@@ -4,6 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 from scipy.stats import t
+from scipy import stats
 
 st.set_page_config(page_title="Previsão da Turbidez da Água", layout="wide")
 st.title("💧 Estudo da Turbidez da Água ao Longo do Tempo")
@@ -15,7 +16,8 @@ classificacao_variaveis = {
     "turbidez": "Quantitativa contínua",
     "periodo": "Qualitativa nominal",
     "ano decimal": "Quantitativa contínua",
-    "sólidos totais": "Quantitativa contínua"
+    "sólidos totais": "Quantitativa contínua",
+    'estação': 'Qualitativa nominal'
 }
 
 # Criar tabela de classificação
@@ -67,7 +69,7 @@ def carregar_dados():
         df = pd.read_excel(caminho)
         df.columns = df.columns.str.strip().str.lower()
 
-        colunas_interesse = ['data de amostragem', 'turbidez', 'sólidos totais', 'solidos totais']
+        colunas_interesse = ['data de amostragem', 'turbidez', 'sólidos totais', 'solidos totais','estação']
         colunas_presentes = [col for col in colunas_interesse if col in df.columns]
 
         if 'data de amostragem' in colunas_presentes:
@@ -159,10 +161,6 @@ assumindo uma relação linear entre o tempo e os valores de turbidez.
 
 Com base nesse modelo, geramos uma projeção para os anos seguintes. A ideia é observar **a tendência** e estimar quando a turbidez pode cair abaixo do limite ideal.
 
-#### E o Intervalo de Confiança?
-
-Embora esse gráfico mostre apenas a linha média prevista, abaixo apresentamos também o **intervalo de confiança de 95%**,  
-que representa a faixa dentro da qual esperamos que a verdadeira turbidez esteja com 95% de certeza, dado o modelo.
 """)
 
 st.header("🧪 Evolução dos Sólidos Totais (STD)")
@@ -189,3 +187,89 @@ if 'sólidos totais' in df.columns:
     st.plotly_chart(fig_std, use_container_width=True)
 else:
     st.info("⚠️ Nenhuma informação sobre sólidos totais foi encontrada nos dados carregados.")
+
+# === Filtragem e gráfico das estações RD074, RD075, RD009 ===
+estacoes_interesse = ['RD074', 'RD075', 'RD009']
+
+st.header("Mapa das estações de coleta")
+st.image('assets\download.png')
+st.write('Declararemos as estações RD074, RD075 e RD009 como estações de interesse para o nosso estudo, devido a sua proximidade a barragem rompida')
+
+# Filtrar os dados para as estações de interesse e as demais
+df_estacoes_interesse = df[df['estação'].isin(estacoes_interesse)]
+df_outros = df[~df['estação'].isin(estacoes_interesse)]
+
+# Gráfico para comparar sólidos totais nas estações de interesse com as demais
+st.header("📊 Comparação dos Sólidos Totais nas Estações RD074, RD075, RD009 com as Demais")
+
+# Criar o gráfico
+fig_comparacao = go.Figure()
+
+# Estações de interesse
+fig_comparacao.add_trace(go.Box(
+    y=df_estacoes_interesse['sólidos totais'],
+    x=df_estacoes_interesse['estação'],
+    name='Estações de Interesse (RD074, RD075, RD009)',
+    boxmean='sd',
+    marker=dict(color='orange')
+))
+
+# Outras estações
+fig_comparacao.add_trace(go.Box(
+    y=df_outros['sólidos totais'],
+    x=df_outros['estação'],
+    name='Outras Estações',
+    boxmean='sd',
+    marker=dict(color='blue')
+))
+
+fig_comparacao.update_layout(
+    title="Distribuição dos Sólidos Totais por Estação",
+    xaxis_title="Estação",
+    yaxis_title="Sólidos Totais (mg/L)",
+    height=500
+)
+
+st.plotly_chart(fig_comparacao, use_container_width=True)
+
+# === Análise estatística (Intervalos de Confiança e Teste T) ===
+# Calcular os intervalos de confiança e o teste t
+
+# Função para calcular intervalo de confiança para a média
+def intervalo_confianca(data, confidence=0.95):
+    n = len(data)
+    mean = np.mean(data)
+    sem = stats.sem(data)  # Erro padrão da média
+    margin_of_error = sem * t.ppf((1 + confidence) / 2., n-1)  # Margem de erro
+    return mean - margin_of_error, mean + margin_of_error, mean
+
+# Intervalo de confiança para as estações de interesse
+ic_interesse_lower, ic_interesse_upper, mean_interesse = intervalo_confianca(df_estacoes_interesse['sólidos totais'])
+
+# Intervalo de confiança para as outras estações
+ic_outros_lower, ic_outros_upper, mean_outros = intervalo_confianca(df_outros['sólidos totais'])
+
+# Exibir intervalos de confiança
+st.subheader("📊 Intervalo de Confiança para a Média de Sólidos Totais")
+st.write(f"**Estações de Interesse (RD074, RD075, RD009):**")
+st.write(f"Média: {mean_interesse:.2f} mg/L")
+st.write(f"Intervalo de Confiança (95%): ({ic_interesse_lower:.2f}, {ic_interesse_upper:.2f}) mg/L")
+
+st.write(f"**Outras Estações:**")
+st.write(f"Média: {mean_outros:.2f} mg/L")
+st.write(f"Intervalo de Confiança (95%): ({ic_outros_lower:.2f}, {ic_outros_upper:.2f}) mg/L")
+
+# Teste t para comparação de médias
+t_stat, p_value = stats.ttest_ind(df_estacoes_interesse['sólidos totais'].dropna(), df_outros['sólidos totais'].dropna())
+
+st.subheader("🔬 Teste T para Comparação de Médias")
+st.write(f"**Estatística t:** {t_stat:.2f}")
+st.write(f"**Valor p:** {p_value:.4f}")
+
+if p_value < 0.05:
+    st.success("📉 Existe uma diferença estatisticamente significativa entre os sólidos totais das estações de interesse (RD074, RD075, RD009) e as demais.")
+else:
+    st.info("📈 Não existe uma diferença estatisticamente significativa entre os sólidos totais das estações de interesse e as demais.")
+
+st.write('Nota-se que, atuando com um intervalo de confiança de 95%, as médias dos sólidos totais presentes nas amostras coletadas pelas estações de interesse ainda são quase metade dos valores comparáveis coletados nas demais estações.')
+st.write('Isso pode evidenciar uma maior preocupação com a remoção dos dejetos no local de rompimento da barragem')

@@ -30,8 +30,8 @@ st.write("Mesmo anos após o desastre, os impactos ainda são sentidos. Muitas f
 st.image("assets\imagem2.png")
 st.divider()
 st.header("Tópicos e perguntas discutidas nesse estudo")
-st.subheader("❓ 1. Qual foi o impacto da lama tóxica na turbidez da água?")
-st.subheader("❓ 2. O número de dejetos sólidos está diminuindo ao longo do tempo?")
-st.subheader("❓ 3. Como a qualidade da água mudou ao longo do tempo?")
+st.subheader("❓ Qual foi o impacto da lama tóxica na turbidez da água?")
+st.subheader("❓ O que podemos dizer sobre o número de dejetos?")
+st.subheader("❓ Como a qualidade da água mudou ao longo do tempo?")
 
 
