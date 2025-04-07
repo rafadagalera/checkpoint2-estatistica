@@ -7,6 +7,33 @@ from scipy.stats import t
 
 st.set_page_config(page_title="Previsão da Turbidez da Água", layout="wide")
 st.title("💧 Estudo da Turbidez da Água ao Longo do Tempo")
+st.markdown("### 🧾 Estrutura do Dataset e Classificação das Variáveis")
+
+# Mapeamento manual de classificação estatística
+classificacao_variaveis = {
+    "data de amostragem": "Qualitativa ordinal",
+    "turbidez": "Quantitativa contínua",
+    "periodo": "Qualitativa nominal",
+    "ano decimal": "Quantitativa contínua",
+    "sólidos totais": "Quantitativa contínua"
+}
+
+# Criar tabela de classificação
+tabela_variaveis = pd.DataFrame({
+    "Variável": list(classificacao_variaveis.keys()),
+    "Tipo Estatístico": list(classificacao_variaveis.values())
+})
+
+st.dataframe(tabela_variaveis, use_container_width=True)
+
+st.markdown("""
+As variáveis foram classificadas de acordo com sua natureza estatística:
+
+- **Qualitativa nominal:** categorias sem ordem definida (ex: período).
+- **Qualitativa ordinal:** categorias com ordem (ex: tempo).
+- **Quantitativa contínua:** números reais que admitem frações (ex: turbidez, ano decimal).
+""")
+
 
 st.markdown("""
 ### 📘 O que é Turbidez?
@@ -40,24 +67,38 @@ def carregar_dados():
         df = pd.read_excel(caminho)
         df.columns = df.columns.str.strip().str.lower()
 
-        if 'data de amostragem' in df.columns and 'turbidez' in df.columns:
-            dados = df[['data de amostragem', 'turbidez']].copy()
+        colunas_interesse = ['data de amostragem', 'turbidez', 'sólidos totais', 'solidos totais']
+        colunas_presentes = [col for col in colunas_interesse if col in df.columns]
+
+        if 'data de amostragem' in colunas_presentes:
+            dados = df[colunas_presentes].copy()
             dados['data de amostragem'] = pd.to_datetime(dados['data de amostragem'], errors='coerce')
-            dados = dados.dropna(subset=['data de amostragem', 'turbidez'])
+            dados = dados.dropna(subset=['data de amostragem'])
             dados['periodo'] = nome
             lista_dfs.append(dados)
 
     return pd.concat(lista_dfs, ignore_index=True)
 
+
+
 df = carregar_dados()
+
+# Padronizar nome da coluna de sólidos totais
+df = df.rename(columns={
+    'solidos totais': 'sólidos totais'
+})
+
 
 # === Pré-processamento ===
 df = df.sort_values(by='data de amostragem')
 df['ano_decimal'] = df['data de amostragem'].dt.year + (df['data de amostragem'].dt.dayofyear / 365)
 
 # === Regressão Linear ===
-X = df[['ano_decimal']].values
-y = df['turbidez'].values
+# Garantir que não há NaN em X e y
+df_modelo = df[['ano_decimal', 'turbidez']].dropna()
+X = df_modelo[['ano_decimal']].values
+y = df_modelo['turbidez'].values
+
 modelo = LinearRegression()
 modelo.fit(X, y)
 
@@ -124,3 +165,27 @@ Embora esse gráfico mostre apenas a linha média prevista, abaixo apresentamos 
 que representa a faixa dentro da qual esperamos que a verdadeira turbidez esteja com 95% de certeza, dado o modelo.
 """)
 
+st.header("🧪 Evolução dos Sólidos Totais (STD)")
+
+if 'sólidos totais' in df.columns:
+    std_data = df[['data de amostragem', 'sólidos totais']].dropna()
+
+    fig_std = go.Figure()
+    fig_std.add_trace(go.Scatter(
+        x=std_data['data de amostragem'],
+        y=std_data['sólidos totais'],
+        mode='lines+markers',
+        name='STD',
+        line=dict(color='purple')
+    ))
+
+    fig_std.update_layout(
+        title="Concentração de Sólidos Totais ao Longo do Tempo",
+        xaxis_title="Data",
+        yaxis_title="Concentração de STD (mg/L)",
+        height=500
+    )
+
+    st.plotly_chart(fig_std, use_container_width=True)
+else:
+    st.info("⚠️ Nenhuma informação sobre sólidos totais foi encontrada nos dados carregados.")
