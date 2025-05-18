@@ -47,9 +47,13 @@ with st.sidebar:
     st.markdown("- [Perguntas Chave](#perguntas-chave)")
     
     st.divider()
-    st.markdown("**Desenvolvido por:**")
-    st.markdown("Equipe de Análise Ambiental")
-    st.markdown("Última atualização: Outubro 2023")
+    st.markdown("Desenvolvido por:")
+    st.write("- Rafael Nascimento")
+    st.write("- Iago Diniz")
+    st.write("- Pedro Henrique")
+    st.write("- Luis Alberto")
+    st.markdown("Equipe de Análise de Dados Ambientais")
+    st.markdown("Última atualização: Maio 2025")
 
 # Conteúdo principal
 st.markdown('<h1 class="header-text">Análise do Desastre Ambiental de Mariana (MG)</h1>', unsafe_allow_html=True)

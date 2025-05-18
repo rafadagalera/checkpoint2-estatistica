@@ -9,9 +9,110 @@ from sklearn.pipeline import make_pipeline
 from scipy.stats import t, binomtest
 from scipy import stats
 
-st.set_page_config(page_title="Previsão da Turbidez da Água", layout="wide")
-st.title("💧 Estudo da Turbidez da Água ao Longo do Tempo")
-st.markdown("### 🧾 Estrutura do Dataset e Classificação das Variáveis")
+# Configuração da página
+st.set_page_config(
+    page_title="Previsão da Turbidez da Água",
+    layout="wide",
+    page_icon="💧",
+    initial_sidebar_state="expanded"
+)
+
+# CSS personalizado
+st.markdown("""
+<style>
+    .main {
+        background-color: #f0f2f6;
+    }
+    .header-text {
+        font-size: 2.5rem !important;
+        color: #2c3e50;
+        font-weight: 700;
+    }
+    .section-title {
+        color: #3498db;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.3rem;
+    }
+    .image-caption {
+        text-align: center;
+        font-style: italic;
+        color: #7f8c8d;
+        margin-top: 0.5rem;
+    }
+    .sidebar .sidebar-content {
+        background-color: #2c3e50;
+        color: white;
+    }
+    .sidebar .sidebar-content a {
+        color: white !important;
+    }
+    .success-box {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+    .warning-box {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Barra lateral com navegação
+with st.sidebar:
+    st.title("🌊 Navegação")
+    st.markdown("- [Visão Geral](#visao-geral)")
+    st.markdown("- [Classificação das Variáveis](#classificacao-variaveis)")
+    st.markdown("- [Modelos de Previsão](#modelos-previsao)")
+    st.markdown("- [Diagnóstico do Modelo](#diagnostico-modelo)")
+    st.markdown("- [Análise Binomial](#analise-binomial)")
+    st.markdown("- [Correlação entre Variáveis](#correlacao-variaveis)")
+    st.markdown("- [Análise por Estação](#analise-estacao)")
+    
+    st.divider()
+    st.markdown("**📅 Períodos Analisados:**")
+    st.markdown("- 2019")
+    st.markdown("- 2020 (1º Semestre)")
+    st.markdown("- 2020 (2º Semestre)")
+    st.markdown("- 2021")
+    
+    st.divider()
+    st.markdown("Desenvolvido por:")
+    st.write("- Rafael Nascimento")
+    st.write("- Iago Diniz")
+    st.write("- Pedro Henrique")
+    st.write("- Luis Alberto")
+    st.markdown("Equipe de Análise de Dados Ambientais")
+    st.markdown("Última atualização: Maio 2025")
+
+# Conteúdo principal
+st.markdown('<h1 class="header-text">💧 Estudo da Turbidez da Água ao Longo do Tempo</h1>', unsafe_allow_html=True)
+
+# Seção de visão geral
+st.markdown('<a name="visao-geral"></a>', unsafe_allow_html=True)
+st.markdown("""
+<div>
+    <h3>📘 O que é Turbidez?</h3>
+    <p>A <strong>turbidez</strong> é uma medida da quantidade de partículas sólidas em suspensão na água que afetam sua transparência.</p>
+    <p>Ela é normalmente causada por argilas, siltes, matéria orgânica, algas ou outros materiais.</p>
+    <ul>
+        <li>A unidade de medida usada é <strong>NTU (Unidade Nefelométrica de Turbidez)</strong>.</li>
+        <li>Segundo a legislação brasileira e padrões internacionais, <strong>valores abaixo de 5 NTU</strong> são considerados <strong>excelentes</strong> para água potável.</li>
+    </ul>
+    <h3>🔍 Objetivo do Estudo</h3>
+    <p>Este painel analisa dados históricos de turbidez da água coletados entre 2019 e 2021.</p>
+    <p>Aplicamos uma <strong>regressão linear</strong> para prever quando os níveis de turbidez podem voltar a padrões <strong>excelentes</strong>.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Seção de classificação das variáveis
+st.markdown('<a name="classificacao-variaveis"></a>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">🧾 Estrutura do Dataset e Classificação das Variáveis</h2>', unsafe_allow_html=True)
 
 # Mapeamento manual de classificação estatística
 classificacao_variaveis = {
@@ -29,32 +130,18 @@ tabela_variaveis = pd.DataFrame({
     "Tipo Estatístico": list(classificacao_variaveis.values())
 })
 
-st.dataframe(tabela_variaveis, use_container_width=True)
+st.dataframe(tabela_variaveis.style.background_gradient(cmap='Blues'), use_container_width=True)
 
 st.markdown("""
-As variáveis foram classificadas de acordo com sua natureza estatística:
-
-- **Qualitativa nominal:** categorias sem ordem definida (ex: período).
-- **Qualitativa ordinal:** categorias com ordem (ex: tempo).
-- **Quantitativa contínua:** números reais que admitem frações (ex: turbidez, ano decimal).
-""")
-
-st.markdown("""
-### 📘 O que é Turbidez?
-
-A **turbidez** é uma medida da quantidade de partículas sólidas em suspensão na água que afetam sua transparência.  
-Ela é normalmente causada por argilas, siltes, matéria orgânica, algas ou outros materiais.
-
-- A unidade de medida usada é **NTU (Unidade Nefelométrica de Turbidez)**.
-- Segundo a legislação brasileira e padrões internacionais, **valores abaixo de 5 NTU** são considerados **excelentes** para água potável.
-
----
-
-### 🔍 Objetivo do Estudo
-
-Este painel analisa dados históricos de turbidez da água coletados entre 2019 e 2021.  
-Aplicamos uma **regressão linear** para prever quando os níveis de turbidez podem voltar a padrões **excelentes**.
-""")
+<div class="feature-card">
+    <h4>Legenda:</h4>
+    <ul>
+        <li><strong>Qualitativa nominal:</strong> categorias sem ordem definida (ex: período).</li>
+        <li><strong>Qualitativa ordinal:</strong> categorias com ordem (ex: tempo).</li>
+        <li><strong>Quantitativa contínua:</strong> números reais que admitem frações (ex: turbidez, ano decimal).</li>
+    </ul>
+</div>
+""", unsafe_allow_html=True)
 
 # === Carregamento dos dados ===
 @st.cache_data
@@ -107,12 +194,14 @@ def plot_residuos(y_real, y_pred):
     residuos = y_real - y_pred
     fig = px.scatter(x=y_pred, y=residuos,
                     labels={'x': 'Valores Preditos', 'y': 'Resíduos'},
-                    title="Análise de Resíduos")
-    fig.add_hline(y=0, line_dash="dash")
+                    title="Análise de Resíduos",
+                    color_discrete_sequence=['#3498db'])
+    fig.add_hline(y=0, line_dash="dash", line_color="red")
     return fig
 
 # === MODELAGEM AVANÇADA ===
-st.header("📈 Modelos de Previsão de Turbidez")
+st.markdown('<a name="modelos-previsao"></a>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">📈 Modelos de Previsão de Turbidez</h2>', unsafe_allow_html=True)
 
 # Seleção do tipo de modelo
 model_type = st.radio("Tipo de Modelo:", 
@@ -160,7 +249,7 @@ fig.add_trace(go.Scatter(
     y=df['turbidez'],
     mode='markers', 
     name='Amostras', 
-    marker=dict(color='blue', size=5)
+    marker=dict(color='#3498db', size=5)
 ))
 
 # Linha de regressão
@@ -169,7 +258,7 @@ fig.add_trace(go.Scatter(
     y=previsoes,
     mode='lines', 
     name=f'Tendência ({model_type})', 
-    line=dict(color='red')
+    line=dict(color='#e74c3c')
 ))
 
 # Intervalo de confiança
@@ -187,14 +276,15 @@ fig.add_trace(go.Scatter(
     fill='tonexty', 
     mode='lines', 
     line=dict(width=0),
-    name='Intervalo 95%'
+    name='Intervalo 95%',
+    fillcolor='rgba(231, 76, 60, 0.2)'
 ))
 
 # Linha padrão excelente
 fig.add_hline(
     y=5, 
     line_dash="dash", 
-    line_color="green",
+    line_color="#2ecc71",
     annotation_text="Padrão Excelente (5 NTU)", 
     annotation_position="bottom right"
 )
@@ -203,7 +293,9 @@ fig.update_layout(
     title="Turbidez da Água ao Longo do Tempo",
     xaxis_title="Data", 
     yaxis_title="Turbidez (NTU)",
-    height=500
+    height=500,
+    plot_bgcolor='rgba(240, 242, 246, 1)',
+    paper_bgcolor='rgba(240, 242, 246, 1)'
 )
 
 st.plotly_chart(fig, use_container_width=True)
@@ -218,21 +310,31 @@ for ano, pred in zip(anos_futuros.flatten(), previsoes):
 st.subheader("📈 Previsão com Base na Tendência Atual")
 
 if ano_excelente:
-    st.success(f"""
-    ✅ A análise de regressão {model_type.lower()} prevê que a turbidez pode atingir o padrão excelente (**≤ 5 NTU**) 
-    por volta de **{int(ano_excelente)}**.
-    """)
+    st.markdown(f"""
+    <div class="success-box">
+        ✅ A análise de regressão {model_type.lower()} prevê que a turbidez pode atingir o padrão excelente (<strong>≤ 5 NTU</strong>) 
+        por volta de <strong>{int(ano_excelente)}</strong>.
+    </div>
+    """, unsafe_allow_html=True)
 else:
-    st.warning("⚠️ A projeção atual indica que os níveis de turbidez podem não atingir o padrão excelente até 2030.")
+    st.markdown("""
+    <div class="warning-box">
+        ⚠️ A projeção atual indica que os níveis de turbidez podem não atingir o padrão excelente até 2030.
+    </div>
+    """, unsafe_allow_html=True)
 
 # === ANÁLISE DE RESÍDUOS ===
-st.header("🔍 Diagnóstico do Modelo")
+st.markdown('<a name="diagnostico-modelo"></a>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">🔍 Diagnóstico do Modelo</h2>', unsafe_allow_html=True)
+
 y_pred = modelo.predict(X)
 fig_resid = plot_residuos(y, y_pred)
 st.plotly_chart(fig_resid, use_container_width=True)
 
 # === ANÁLISE BINOMIAL ===
-st.header("📊 Análise Binomial de Conformidade")
+st.markdown('<a name="analise-binomial"></a>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">📊 Análise Binomial de Conformidade</h2>', unsafe_allow_html=True)
+
 limite_turbidez = st.slider("Limite de Turbidez (NTU) para conformidade:", 
                            min_value=1.0, max_value=20.0, value=5.0, step=0.5)
 
@@ -243,7 +345,8 @@ fig_binom = px.bar(conformidade_por_ano,
                   x='data de amostragem', 
                   y='conforme',
                   title=f"Proporção de Amostras Conforme (≤ {limite_turbidez} NTU)",
-                  labels={'conforme': 'Proporção Conforme', 'data de amostragem': 'Ano'})
+                  labels={'conforme': 'Proporção Conforme', 'data de amostragem': 'Ano'},
+                  color_discrete_sequence=['#3498db'])
 st.plotly_chart(fig_binom, use_container_width=True)
 
 # Teste binomial
@@ -256,7 +359,9 @@ st.metric("Teste Binomial",
          help="H0: Proporção de amostras conforme = 95%")
 
 # === CORRELAÇÃO ENTRE VARIÁVEIS ===
-st.header("🔗 Correlação entre Turbidez e Sólidos Totais")
+st.markdown('<a name="correlacao-variaveis"></a>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">🔗 Correlação entre Turbidez e Sólidos Totais</h2>', unsafe_allow_html=True)
+
 if 'sólidos totais' in df.columns:
     df_corr = df[['turbidez', 'sólidos totais']].dropna()
     fig_corr = px.scatter(
@@ -265,7 +370,8 @@ if 'sólidos totais' in df.columns:
         y='turbidez',
         trendline="ols",
         title="Relação entre Turbidez e Sólidos Totais",
-        labels={'sólidos totais': 'Sólidos Totais (mg/L)', 'turbidez': 'Turbidez (NTU)'}
+        labels={'sólidos totais': 'Sólidos Totais (mg/L)', 'turbidez': 'Turbidez (NTU)'},
+        color_discrete_sequence=['#3498db']
     )
     st.plotly_chart(fig_corr, use_container_width=True)
     
@@ -273,45 +379,25 @@ if 'sólidos totais' in df.columns:
     corr_coef = np.corrcoef(df_corr['sólidos totais'], df_corr['turbidez'])[0,1]
     st.metric("Coeficiente de Correlação de Pearson", f"{corr_coef:.2f}")
 
-# [RESTANTE DO CÓDIGO ORIGINAL MANTIDO...]
-st.header("🧪 Evolução dos Sólidos Totais (STD)")
-
-if 'sólidos totais' in df.columns:
-    std_data = df[['data de amostragem', 'sólidos totais']].dropna()
-
-    fig_std = go.Figure()
-    fig_std.add_trace(go.Scatter(
-        x=std_data['data de amostragem'],
-        y=std_data['sólidos totais'],
-        mode='lines+markers',
-        name='STD',
-        line=dict(color='purple')
-    ))
-
-    fig_std.update_layout(
-        title="Concentração de Sólidos Totais ao Longo do Tempo",
-        xaxis_title="Data",
-        yaxis_title="Concentração de STD (mg/L)",
-        height=500
-    )
-
-    st.plotly_chart(fig_std, use_container_width=True)
-else:
-    st.info("⚠️ Nenhuma informação sobre sólidos totais foi encontrada nos dados carregados.")
-
-# === Filtragem e gráfico das estações RD074, RD075, RD009 ===
-estacoes_interesse = ['RD074', 'RD075', 'RD009']
+# === ANÁLISE POR ESTAÇÃO ===
+st.markdown('<a name="analise-estacao"></a>', unsafe_allow_html=True)
+st.markdown('<h2 class="section-title">🏞️ Análise por Estação de Monitoramento</h2>', unsafe_allow_html=True)
 
 st.header("Mapa das estações de coleta")
-st.image('assets\download.png')
-st.write('Declararemos as estações RD074, RD075 e RD009 como estações de interesse para o nosso estudo, devido a sua proximidade a barragem rompida')
+st.image('assets/download.png', caption="Localização das estações de monitoramento")
+st.markdown("""
+<div class="feature-card">
+    <p>Declararemos as estações RD074, RD075 e RD009 como estações de interesse para o nosso estudo, devido a sua proximidade a barragem rompida.</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Filtrar os dados para as estações de interesse e as demais
+estacoes_interesse = ['RD074', 'RD075', 'RD009']
 df_estacoes_interesse = df[df['estação'].isin(estacoes_interesse)]
 df_outros = df[~df['estação'].isin(estacoes_interesse)]
 
 # Gráfico para comparar sólidos totais nas estações de interesse com as demais
-st.header("📊 Comparação dos Sólidos Totais nas Estações RD074, RD075, RD009 com as Demais")
+st.markdown('<h3 class="section-title">📊 Comparação dos Sólidos Totais nas Estações RD074, RD075, RD009 com as Demais</h3>', unsafe_allow_html=True)
 
 # Criar o gráfico
 fig_comparacao = go.Figure()
@@ -322,7 +408,7 @@ fig_comparacao.add_trace(go.Box(
     x=df_estacoes_interesse['estação'],
     name='Estações de Interesse (RD074, RD075, RD009)',
     boxmean='sd',
-    marker=dict(color='orange')
+    marker=dict(color='#e67e22')
 ))
 
 # Outras estações
@@ -331,14 +417,16 @@ fig_comparacao.add_trace(go.Box(
     x=df_outros['estação'],
     name='Outras Estações',
     boxmean='sd',
-    marker=dict(color='blue')
+    marker=dict(color='#3498db')
 ))
 
 fig_comparacao.update_layout(
     title="Distribuição dos Sólidos Totais por Estação",
     xaxis_title="Estação",
     yaxis_title="Sólidos Totais (mg/L)",
-    height=500
+    height=500,
+    plot_bgcolor='rgba(240, 242, 246, 1)',
+    paper_bgcolor='rgba(240, 242, 246, 1)'
 )
 
 st.plotly_chart(fig_comparacao, use_container_width=True)
@@ -359,25 +447,59 @@ ic_outros_lower, ic_outros_upper, mean_outros = intervalo_confianca(df_outros['s
 
 # Exibir intervalos de confiança
 st.subheader("📊 Intervalo de Confiança para a Média de Sólidos Totais")
-st.write(f"**Estações de Interesse (RD074, RD075, RD009):**")
-st.write(f"Média: {mean_interesse:.2f} mg/L")
-st.write(f"Intervalo de Confiança (95%): ({ic_interesse_lower:.2f}, {ic_interesse_upper:.2f}) mg/L")
+col1, col2 = st.columns(2)
 
-st.write(f"**Outras Estações:**")
-st.write(f"Média: {mean_outros:.2f} mg/L")
-st.write(f"Intervalo de Confiança (95%): ({ic_outros_lower:.2f}, {ic_outros_upper:.2f}) mg/L")
+with col1:
+    st.markdown("""
+    <div class="feature-card">
+        <h4>Estacões de Interesse (RD074, RD075, RD009):</h4>
+        <p>Média: {:.2f} mg/L</p>
+        <p>Intervalo de Confiança (95%): ({:.2f}, {:.2f}) mg/L</p>
+    </div>
+    """.format(mean_interesse, ic_interesse_lower, ic_interesse_upper), unsafe_allow_html=True)
+
+with col2:
+    st.markdown("""
+    <div class="feature-card">
+        <h4>Outras Estações:</h4>
+        <p>Média: {:.2f} mg/L</p>
+        <p>Intervalo de Confiança (95%): ({:.2f}, {:.2f}) mg/L</p>
+    </div>
+    """.format(mean_outros, ic_outros_lower, ic_outros_upper), unsafe_allow_html=True)
 
 # Teste t para comparação de médias
 t_stat, p_value = stats.ttest_ind(df_estacoes_interesse['sólidos totais'].dropna(), df_outros['sólidos totais'].dropna())
 
 st.subheader("🔬 Teste T para Comparação de Médias")
-st.write(f"**Estatística t:** {t_stat:.2f}")
-st.write(f"**Valor p:** {p_value:.4f}")
+st.metric("Estatística t", f"{t_stat:.2f}")
+st.metric("Valor p", f"{p_value:.4f}")
 
 if p_value < 0.05:
-    st.success("📉 Existe uma diferença estatisticamente significativa entre os sólidos totais das estações de interesse (RD074, RD075, RD009) e as demais.")
+    st.markdown("""
+    <div class="success-box">
+        📉 Existe uma diferença estatisticamente significativa entre os sólidos totais das estações de interesse (RD074, RD075, RD009) e as demais.
+    </div>
+    """, unsafe_allow_html=True)
 else:
-    st.info("📈 Não existe uma diferença estatisticamente significativa entre os sólidos totais das estações de interesse e as demais.")
+    st.markdown("""
+    <div class="warning-box">
+        📈 Não existe uma diferença estatisticamente significativa entre os sólidos totais das estações de interesse e as demais.
+    </div>
+    """, unsafe_allow_html=True)
 
-st.write('Nota-se que, atuando com um intervalo de confiança de 95%, as médias dos sólidos totais presentes nas amostras coletadas pelas estações de interesse ainda são quase metade dos valores comparáveis coletados nas demais estações.')
-st.write('Isso pode evidenciar uma maior preocupação com a remoção dos dejetos no local de rompimento da barragem')
+st.markdown("""
+<div class="feature-card">
+    <p>Nota-se que, atuando com um intervalo de confiança de 95%, as médias dos sólidos totais presentes nas amostras coletadas pelas estações de interesse ainda são quase metade dos valores comparáveis coletados nas demais estações.</p>
+    <p>Isso pode evidenciar uma maior preocupação com a remoção dos dejetos no local de rompimento da barragem.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Rodapé
+st.divider()
+st.markdown("""
+<div style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
+    Este projeto foi desenvolvido para fins acadêmicos e de pesquisa.<br>
+    Dados coletados de fontes oficiais entre 2019-2021.<br>
+    Para mais informações, entre em contato: contato@analiseambiental.org
+</div>
+""", unsafe_allow_html=True)
