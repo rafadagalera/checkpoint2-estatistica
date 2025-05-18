@@ -500,6 +500,5 @@ st.markdown("""
 <div style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
     Este projeto foi desenvolvido para fins acadêmicos e de pesquisa.<br>
     Dados coletados de fontes oficiais entre 2019-2021.<br>
-    Para mais informações, entre em contato: contato@analiseambiental.org
 </div>
 """, unsafe_allow_html=True)
