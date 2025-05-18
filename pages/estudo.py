@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 from sklearn.linear_model import LinearRegression
-from scipy.stats import t
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+from scipy.stats import t, binomtest
 from scipy import stats
 
 st.set_page_config(page_title="Previsão da Turbidez da Água", layout="wide")
@@ -35,7 +38,6 @@ As variáveis foram classificadas de acordo com sua natureza estatística:
 - **Qualitativa ordinal:** categorias com ordem (ex: tempo).
 - **Quantitativa contínua:** números reais que admitem frações (ex: turbidez, ano decimal).
 """)
-
 
 st.markdown("""
 ### 📘 O que é Turbidez?
@@ -81,55 +83,128 @@ def carregar_dados():
 
     return pd.concat(lista_dfs, ignore_index=True)
 
-
-
 df = carregar_dados()
 
 # Padronizar nome da coluna de sólidos totais
-df = df.rename(columns={
-    'solidos totais': 'sólidos totais'
-})
-
+df = df.rename(columns={'solidos totais': 'sólidos totais'})
 
 # === Pré-processamento ===
 df = df.sort_values(by='data de amostragem')
 df['ano_decimal'] = df['data de amostragem'].dt.year + (df['data de amostragem'].dt.dayofyear / 365)
 
-# === Regressão Linear ===
-# Garantir que não há NaN em X e y
+# === NOVAS FUNÇÕES ===
+def intervalo_previsao(X, y, modelo, alfa=0.05):
+    """Calcula intervalo de previsão para regressão linear"""
+    pred = modelo.predict(X)
+    n = len(y)
+    mse = np.sum((y - pred) ** 2) / (n - 2)
+    h = np.diag(X @ np.linalg.pinv(X.T @ X) @ X.T)
+    erro = np.sqrt(mse * (1 + h))
+    t_val = t.ppf(1 - alfa/2, n-2)
+    return pred - t_val * erro, pred + t_val * erro
+
+def plot_residuos(y_real, y_pred):
+    residuos = y_real - y_pred
+    fig = px.scatter(x=y_pred, y=residuos,
+                    labels={'x': 'Valores Preditos', 'y': 'Resíduos'},
+                    title="Análise de Resíduos")
+    fig.add_hline(y=0, line_dash="dash")
+    return fig
+
+# === MODELAGEM AVANÇADA ===
+st.header("📈 Modelos de Previsão de Turbidez")
+
+# Seleção do tipo de modelo
+model_type = st.radio("Tipo de Modelo:", 
+                     ["Linear", "Polinomial (Grau 2)"], 
+                     horizontal=True)
+
+# Preparar dados
 df_modelo = df[['ano_decimal', 'turbidez']].dropna()
 X = df_modelo[['ano_decimal']].values
 y = df_modelo['turbidez'].values
 
-modelo = LinearRegression()
-modelo.fit(X, y)
+# Ajustar modelo selecionado
+if model_type == "Linear":
+    modelo = LinearRegression()
+    modelo.fit(X, y)
+else:
+    # Modelo polinomial
+    modelo = make_pipeline(
+        PolynomialFeatures(degree=2),
+        LinearRegression()
+    )
+    modelo.fit(X, y)
 
 # Previsão para anos futuros
 anos_futuros = np.arange(2019, 2031, 0.1).reshape(-1, 1)
 previsoes = modelo.predict(anos_futuros)
 
+# Calcular intervalos de confiança
+if model_type == "Linear":
+    ic_lower, ic_upper = intervalo_previsao(X, y, modelo)
+else:
+    # Para modelo polinomial, usamos um intervalo simplificado
+    ic_lower = previsoes - 1.96 * np.std(y - modelo.predict(X))
+    ic_upper = previsoes + 1.96 * np.std(y - modelo.predict(X))
+
 # Criar datas reais para eixo X
 datas_futuras = pd.to_datetime([f"{int(a)}-01-01" for a in anos_futuros.flatten()])
 
-# === Gráfico 1: turbidez + regressão ===
-st.header("📊 Evolução da Turbidez da Água")
+# === Gráfico de Previsão ===
 fig = go.Figure()
 
 # Pontos reais
-fig.add_trace(go.Scatter(x=df['data de amostragem'], y=df['turbidez'],
-                         mode='markers', name='Amostras', marker=dict(color='blue', size=5)))
+fig.add_trace(go.Scatter(
+    x=df['data de amostragem'], 
+    y=df['turbidez'],
+    mode='markers', 
+    name='Amostras', 
+    marker=dict(color='blue', size=5)
+))
 
 # Linha de regressão
-fig.add_trace(go.Scatter(x=datas_futuras, y=previsoes,
-                         mode='lines', name='Tendência (Regressão Linear)', line=dict(color='red')))
+fig.add_trace(go.Scatter(
+    x=datas_futuras, 
+    y=previsoes,
+    mode='lines', 
+    name=f'Tendência ({model_type})', 
+    line=dict(color='red')
+))
+
+# Intervalo de confiança
+fig.add_trace(go.Scatter(
+    x=datas_futuras, 
+    y=ic_lower,
+    fill=None, 
+    mode='lines', 
+    line=dict(width=0),
+    showlegend=False
+))
+fig.add_trace(go.Scatter(
+    x=datas_futuras, 
+    y=ic_upper,
+    fill='tonexty', 
+    mode='lines', 
+    line=dict(width=0),
+    name='Intervalo 95%'
+))
 
 # Linha padrão excelente
-fig.add_hline(y=5, line_dash="dash", line_color="green",
-              annotation_text="Padrão Excelente (5 NTU)", annotation_position="bottom right")
+fig.add_hline(
+    y=5, 
+    line_dash="dash", 
+    line_color="green",
+    annotation_text="Padrão Excelente (5 NTU)", 
+    annotation_position="bottom right"
+)
 
-fig.update_layout(title="Turbidez da Água ao Longo do Tempo",
-                  xaxis_title="Data", yaxis_title="Turbidez (NTU)",
-                  height=500)
+fig.update_layout(
+    title="Turbidez da Água ao Longo do Tempo",
+    xaxis_title="Data", 
+    yaxis_title="Turbidez (NTU)",
+    height=500
+)
 
 st.plotly_chart(fig, use_container_width=True)
 
@@ -144,25 +219,61 @@ st.subheader("📈 Previsão com Base na Tendência Atual")
 
 if ano_excelente:
     st.success(f"""
-    ✅ A análise de regressão linear prevê que a turbidez pode atingir o padrão excelente (**≤ 5 NTU**) 
+    ✅ A análise de regressão {model_type.lower()} prevê que a turbidez pode atingir o padrão excelente (**≤ 5 NTU**) 
     por volta de **{int(ano_excelente)}**.
     """)
 else:
     st.warning("⚠️ A projeção atual indica que os níveis de turbidez podem não atingir o padrão excelente até 2030.")
 
-# === Explicação estatística ===
-st.markdown("""
----
+# === ANÁLISE DE RESÍDUOS ===
+st.header("🔍 Diagnóstico do Modelo")
+y_pred = modelo.predict(X)
+fig_resid = plot_residuos(y, y_pred)
+st.plotly_chart(fig_resid, use_container_width=True)
 
-### 📐 Sobre o Método Estatístico
+# === ANÁLISE BINOMIAL ===
+st.header("📊 Análise Binomial de Conformidade")
+limite_turbidez = st.slider("Limite de Turbidez (NTU) para conformidade:", 
+                           min_value=1.0, max_value=20.0, value=5.0, step=0.5)
 
-Utilizamos **regressão linear simples**, uma técnica estatística que busca ajustar uma linha reta aos dados históricos, 
-assumindo uma relação linear entre o tempo e os valores de turbidez.
+df['conforme'] = df['turbidez'] <= limite_turbidez
+conformidade_por_ano = df.groupby(df['data de amostragem'].dt.year)['conforme'].mean().reset_index()
 
-Com base nesse modelo, geramos uma projeção para os anos seguintes. A ideia é observar **a tendência** e estimar quando a turbidez pode cair abaixo do limite ideal.
+fig_binom = px.bar(conformidade_por_ano, 
+                  x='data de amostragem', 
+                  y='conforme',
+                  title=f"Proporção de Amostras Conforme (≤ {limite_turbidez} NTU)",
+                  labels={'conforme': 'Proporção Conforme', 'data de amostragem': 'Ano'})
+st.plotly_chart(fig_binom, use_container_width=True)
 
-""")
+# Teste binomial
+total_amostras = len(df['conforme'].dropna())
+amostras_conformes = sum(df['conforme'].dropna())
+result = binomtest(amostras_conformes, total_amostras, 0.95)  # H0: p=95% de conformidade
 
+st.metric("Teste Binomial", 
+         f"p-value = {result.pvalue:.4f}",
+         help="H0: Proporção de amostras conforme = 95%")
+
+# === CORRELAÇÃO ENTRE VARIÁVEIS ===
+st.header("🔗 Correlação entre Turbidez e Sólidos Totais")
+if 'sólidos totais' in df.columns:
+    df_corr = df[['turbidez', 'sólidos totais']].dropna()
+    fig_corr = px.scatter(
+        df_corr, 
+        x='sólidos totais', 
+        y='turbidez',
+        trendline="ols",
+        title="Relação entre Turbidez e Sólidos Totais",
+        labels={'sólidos totais': 'Sólidos Totais (mg/L)', 'turbidez': 'Turbidez (NTU)'}
+    )
+    st.plotly_chart(fig_corr, use_container_width=True)
+    
+    # Calcular coeficiente de correlação
+    corr_coef = np.corrcoef(df_corr['sólidos totais'], df_corr['turbidez'])[0,1]
+    st.metric("Coeficiente de Correlação de Pearson", f"{corr_coef:.2f}")
+
+# [RESTANTE DO CÓDIGO ORIGINAL MANTIDO...]
 st.header("🧪 Evolução dos Sólidos Totais (STD)")
 
 if 'sólidos totais' in df.columns:
@@ -233,14 +344,11 @@ fig_comparacao.update_layout(
 st.plotly_chart(fig_comparacao, use_container_width=True)
 
 # === Análise estatística (Intervalos de Confiança e Teste T) ===
-# Calcular os intervalos de confiança e o teste t
-
-# Função para calcular intervalo de confiança para a média
 def intervalo_confianca(data, confidence=0.95):
     n = len(data)
     mean = np.mean(data)
-    sem = stats.sem(data)  # Erro padrão da média
-    margin_of_error = sem * t.ppf((1 + confidence) / 2., n-1)  # Margem de erro
+    sem = stats.sem(data)
+    margin_of_error = sem * t.ppf((1 + confidence) / 2., n-1)
     return mean - margin_of_error, mean + margin_of_error, mean
 
 # Intervalo de confiança para as estações de interesse

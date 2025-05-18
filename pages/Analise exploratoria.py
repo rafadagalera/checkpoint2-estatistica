@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import numpy as np
+from scipy import stats
 
 # Função para carregar os dados
 @st.cache_data
@@ -22,16 +24,59 @@ def carregar_dados():
             dados[nome] = pd.read_excel(caminho)
     return dados
 
+def analise_descritiva(df, coluna):
+    desc = df[coluna].describe().to_frame().T
+    desc['skewness'] = stats.skew(df[coluna].dropna())
+    desc['kurtosis'] = stats.kurtosis(df[coluna].dropna())
+    return desc
+
 # Streamlit App
-st.title("Análise Exploratória de Dados de Qualidade da Água")
+st.title("📊 Análise Exploratória de Dados de Qualidade da Água")
 st.markdown("Selecione o período para visualizar os dados:")
 
 dados = carregar_dados()
 periodo = st.selectbox("Escolha o período:", list(dados.keys()))
 df = dados[periodo]
 
-st.subheader(f"📊 Dados do período: {periodo}")
-st.dataframe(df)
+# Seção expandida de estatísticas descritivas
+st.subheader("📈 Estatísticas Descritivas")
+colunas_numericas = df.select_dtypes(include=["float64", "int64"]).columns.tolist()
+
+if colunas_numericas:
+    col_selecionada = st.selectbox("Selecione uma variável para análise:", colunas_numericas)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.dataframe(analise_descritiva(df, col_selecionada))
+    
+    with col2:
+        # Teste de normalidade
+        _, p_value = stats.normaltest(df[col_selecionada].dropna())
+        st.metric("Teste de Normalidade (p-value)", f"{p_value:.4f}")
+        st.caption("p-value < 0.05 indica não-normalidade")
+
+# Matriz de correlação
+st.subheader("🔗 Matriz de Correlação")
+if len(colunas_numericas) > 1:
+    corr_matrix = df[colunas_numericas].corr(numeric_only=True)
+    fig_corr = px.imshow(corr_matrix, text_auto=True, aspect="auto",
+                        title="Correlação entre Variáveis")
+    st.plotly_chart(fig_corr, use_container_width=True)
+
+# Gráficos de distribuição
+st.subheader("📊 Distribuição dos Dados")
+if colunas_numericas:
+    col_dist = st.selectbox("Selecione variável para distribuição:", colunas_numericas, key='dist')
+    
+    tab1, tab2 = st.tabs(["Histograma", "Boxplot"])
+    with tab1:
+        fig_hist = px.histogram(df, x=col_dist, nbins=30, 
+                              title=f"Distribuição de {col_dist}")
+        st.plotly_chart(fig_hist, use_container_width=True)
+    
+    with tab2:
+        fig_box = px.box(df, y=col_dist, title=f"Boxplot de {col_dist}")
+        st.plotly_chart(fig_box, use_container_width=True)
 
 # Tentar detectar coluna de tempo
 possiveis_colunas_tempo = [col for col in df.columns if "data" in col.lower() or "ano" in col.lower() or "mês" in col.lower() or "mes" in col.lower()]

@@ -10,3 +10,4 @@ matplotlib
 xlrd
 seaborn
 scipy
+statsmodel
