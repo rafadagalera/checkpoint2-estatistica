@@ -73,6 +73,7 @@ with st.sidebar:
     st.markdown("- [Análise Binomial](#analise-binomial)")
     st.markdown("- [Correlação entre Variáveis](#correlacao-variaveis)")
     st.markdown("- [Análise por Estação](#analise-estacao)")
+    st.markdown("- [Teste de Hipótese](#teste-hipotese)")
     
     st.divider()
     st.markdown("**📅 Períodos Analisados:**")
@@ -494,11 +495,53 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Rodapé
-st.divider()
-st.markdown("""
-<div style="text-align: center; color: #7f8c8d; font-size: 0.9rem;">
-    Este projeto foi desenvolvido para fins acadêmicos e de pesquisa.<br>
-    Dados coletados de fontes oficiais entre 2019-2021.<br>
-</div>
-""", unsafe_allow_html=True)
+# Âncora e título da seção
+st.markdown('<a name="teste-hipotese"></a>', unsafe_allow_html=True)
+st.header("🔬 Teste de Hipótese: Turbidez > Padrão Excelente")
+
+# Hipóteses com container destacado
+with st.container():
+    st.subheader("Formulação das Hipóteses")
+    st.markdown("""
+    **H₀ (Hipótese Nula):** A turbidez média é igual a 5 NTU (padrão excelente)  
+    **H₁ (Hipótese Alternativa):** A turbidez média é maior que 5 NTU  
+    *Teste unicaudal à direita com α = 0.05*
+    """)
+    st.markdown("---")
+
+# Realizar o teste t (cálculos permanecem iguais)
+turbidez_data = df['turbidez'].dropna()
+t_stat, p_value = stats.ttest_1samp(turbidez_data, 5, alternative='greater')
+ic_lower, ic_upper = stats.t.interval(0.95, len(turbidez_data)-1, 
+                   loc=np.mean(turbidez_data), 
+                   scale=stats.sem(turbidez_data))
+
+# Métricas em colunas
+cols = st.columns(3)
+cols[0].metric("Média Observada", f"{np.mean(turbidez_data):.2f} NTU")
+cols[1].metric("Estatística t", f"{t_stat:.3f}")
+cols[2].metric("Valor p", f"{p_value:.4f}")
+
+# Intervalo de Confiança
+st.subheader("Intervalo de Confiança 95%")
+st.write(f"{ic_lower:.2f} NTU ≤ μ ≤ {ic_upper:.2f} NTU")
+
+# Conclusão do teste
+st.subheader("Ponderação e Conclusão")
+st.write("**Análise do valor-p:**")
+st.markdown(f"""
+- O valor-p obtido ({p_value:.4f}) é {'menor' if p_value < 0.05 else 'maior'} que o nível de significância α = 0.05
+- Isso indica que há {'evidências suficientes' if p_value < 0.05 else 'evidências insuficientes'} para rejeitar a hipótese nula
+""")
+
+st.write("**Interpretação prática:**")
+st.markdown(f"""
+- A turbidez média observada ({np.mean(turbidez_data):.2f} NTU) está {'significativamente acima' if p_value < 0.05 else 'dentro do esperado'} do padrão excelente (5 NTU)
+- O intervalo de confiança não inclui o valor de referência (5 NTU), reforçando a {'presença' if p_value < 0.05 else 'ausência'} de impacto significativo
+""")
+
+# Caixa de conclusão condicional
+if p_value < 0.05:
+    st.success(f"**Conclusão final:** Rejeitamos H₀ - há evidências estatísticas de que a turbidez permanece acima do padrão excelente.")
+else:
+    st.warning(f"**Conclusão final:** Não rejeitamos H₀ - há evidências insuficientes de que a turbidez permanece acima do padrão excelente.")
